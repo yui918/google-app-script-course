@@ -279,12 +279,88 @@ function 新增週報範例資料() {
   }
 }
 
+/**
+ * 自動 Email 通知未填寫週報的部門
+ */
+function 通知未填寫部門() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var 今天 = new Date();
+    var 週一 = new Date(今天);
+    週一.setDate(今天.getDate() - 今天.getDay() + 1);
+    var 週五 = new Date(週一);
+    週五.setDate(週一.getDate() + 4);
+
+    var 週區間 = Utilities.formatDate(週一, "Asia/Taipei", "MMdd") + "-" +
+                 Utilities.formatDate(週五, "Asia/Taipei", "MMdd");
+
+    var 部門 = ["業務部", "行銷部", "研發部", "人資部", "財務部"];
+    var 未填寫部門 = [];
+
+    部門.forEach(function(部門名) {
+      var 表名 = "週報_" + 部門名 + "_" + 週區間;
+      var sheet = ss.getSheetByName(表名);
+      
+      if (!sheet) {
+        // 工作表不存在也算未填寫
+        未填寫部門.push(部門名);
+        return;
+      }
+      
+      var 完成資料 = sheet.getRange(7, 1, 6, 5).getValues();
+      var 有資料 = false;
+
+      完成資料.forEach(function(row) {
+        if (row[1] && String(row[1]).trim() !== "") {
+          有資料 = true;
+        }
+      });
+
+      if (!有資料) {
+        未填寫部門.push(部門名);
+      }
+    });
+
+    if (未填寫部門.length > 0) {
+      // 示範：寄給目前執行腳本的使用者
+      var 接收者 = Session.getActiveUser().getEmail(); 
+      // 若無法取得使用者 Email，設定一個預設提示
+      if (!接收者) {
+         SpreadsheetApp.getUi().alert("⚠️ 發現未填寫部門：" + 未填寫部門.join("、") + "\n但無法取得您的 Email 來寄送通知。");
+         return;
+      }
+
+      var 主旨 = "⚠️ 【提醒】本週 (" + 週區間 + ") 尚未填寫週報部門名單";
+      var 內文 = "您好，\n\n以下部門尚未填寫本週週報，請盡速提醒：\n";
+      
+      未填寫部門.forEach(function(名) {
+        內文 += " - " + 名 + "\n";
+      });
+      
+      內文 += "\n系統自動發送，請勿直接回覆。";
+      
+      MailApp.sendEmail(接收者, 主旨, 內文);
+      
+      Logger.log("✅ 已發送 Email 通知未填寫部門：" + 未填寫部門.join("、"));
+      SpreadsheetApp.getUi().alert("✅ 提醒信已寄出！\n信箱：" + 接收者 + "\n未填寫部門：" + 未填寫部門.join("、"));
+    } else {
+      Logger.log("🎉 所有部門皆已填寫！");
+      SpreadsheetApp.getUi().alert("🎉 太棒了，所有部門皆已填寫本週週報！");
+    }
+
+  } catch (錯誤) {
+    Logger.log("❌ 通知錯誤：" + 錯誤.message);
+    SpreadsheetApp.getUi().alert("❌ 錯誤：" + 錯誤.message);
+  }
+}
+
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu("🤖 智慧週報系統")
     .addItem("📋 建立本週週報", "建立本週週報")
     .addItem("📝 新增週報範例資料", "新增週報範例資料")
     .addItem("📊 彙整所有週報", "彙整週報")
+    .addItem("📧 通知未填寫部門", "通知未填寫部門")
     .addSeparator()
     .addItem("⏰ 設定週一自動建立", "設定週一自動建立")
     .addItem("⏰ 設定週五自動彙整", "設定週五自動彙整")
