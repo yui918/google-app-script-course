@@ -1,0 +1,173 @@
+/**
+ * Google Sheets 資料處理與分析
+ * 功能：自動清理資料、計算統計資料、生成報表
+ */
+function processSpreadsheetData() {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  const dataSheet = spreadsheet.getSheetByName('原始資料');
+  const reportSheet = getOrCreateSheet(spreadsheet, '分析報表');
+  
+  // 取得原始資料
+  const dataRange = dataSheet.getDataRange();
+  const data = dataRange.getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+  
+  console.log(`開始處理 ${rows.length} 筆資料...`);
+  
+  // 資料清理
+  const cleanedData = cleanData(rows);
+  console.log(`資料清理完成，有效資料：${cleanedData.length} 筆`);
+  
+  // 生成分析報表
+  generateReport(reportSheet, cleanedData, headers);
+  
+  console.log('資料處理與分析完成！');
+}
+
+/**
+ * 資料清理函數
+ * @param {Array} data - 原始資料陣列
+ * @return {Array} - 清理後的資料
+ */
+function cleanData(data) {
+  return data.filter(row => {
+    // 移除空白列
+    if (row.every(cell => !cell)) return false;
+    
+    // 移除無效的郵件地址（假設第二欄是郵件）
+    const email = row[1];
+    if (email && !isValidEmail(email)) return false;
+    
+    return true;
+  }).map(row => {
+    // 資料標準化
+    return row.map(cell => {
+      if (typeof cell === 'string') {
+        // 移除多餘空白
+        return cell.trim();
+      }
+      return cell;
+    });
+  });
+}
+
+/**
+ * 郵件格式驗證
+ * @param {string} email - 郵件地址
+ * @return {boolean} - 是否為有效郵件
+ */
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+/**
+ * 生成分析報表
+ * @param {Sheet} sheet - 報表工作表
+ * @param {Array} data - 清理後的資料
+ * @param {Array} headers - 欄位標題
+ */
+function generateReport(sheet, data, headers) {
+  // 清除現有內容
+  sheet.clear();
+  
+  // 設定報表標題
+  sheet.getRange('A1').setValue('資料分析報表');
+  sheet.getRange('A1').setFontSize(16).setFontWeight('bold');
+  
+  // 基本統計資訊
+  const stats = [
+    ['生成時間', new Date()],
+    ['總資料筆數', data.length],
+    ['資料完整性', `${(data.length / (data.length + 100)) * 100}%`] // 假設統計
+  ];
+  
+  // 寫入統計資訊
+  let currentRow = 3;
+  stats.forEach(([label, value]) => {
+    sheet.getRange(currentRow, 1).setValue(label);
+    sheet.getRange(currentRow, 2).setValue(value);
+    currentRow++;
+  });
+  
+  // 如果資料包含數值欄位，進行進階分析
+  if (data.length > 0) {
+    currentRow += 2;
+    sheet.getRange(currentRow, 1).setValue('詳細分析');
+    sheet.getRange(currentRow, 1).setFontWeight('bold');
+    currentRow++;
+    
+    // 假設第三欄是數值資料進行分析
+    const numericData = data
+      .map(row => parseFloat(row[2]))
+      .filter(num => !isNaN(num));
+    
+    if (numericData.length > 0) {
+      const average = numericData.reduce((sum, num) => sum + num, 0) / numericData.length;
+      const max = Math.max(...numericData);
+      const min = Math.min(...numericData);
+      
+      const analyticsData = [
+        ['平均值', average.toFixed(2)],
+        ['最大值', max],
+        ['最小值', min],
+        ['資料範圍', `${min} - ${max}`]
+      ];
+      
+      analyticsData.forEach(([label, value]) => {
+        sheet.getRange(currentRow, 1).setValue(label);
+        sheet.getRange(currentRow, 2).setValue(value);
+        currentRow++;
+      });
+    }
+  }
+  
+  // 美化報表格式
+  formatReport(sheet, currentRow);
+}
+
+/**
+ * 報表格式美化
+ * @param {Sheet} sheet - 工作表
+ * @param {number} lastRow - 最後一列
+ */
+function formatReport(sheet, lastRow) {
+  // 設定欄寬
+  sheet.autoResizeColumns(1, 2);
+  
+  // 設定邊框
+  const range = sheet.getRange(1, 1, lastRow, 2);
+  range.setBorder(true, true, true, true, true, true);
+  
+  // 設定交替列顏色
+  for (let i = 3; i <= lastRow; i += 2) {
+    sheet.getRange(i, 1, 1, 2).setBackground('#f8f9fa');
+  }
+}
+
+/**
+ * 取得或建立工作表
+ * @param {Spreadsheet} spreadsheet - 試算表物件
+ * @param {string} sheetName - 工作表名稱
+ * @return {Sheet} - 工作表物件
+ */
+function getOrCreateSheet(spreadsheet, sheetName) {
+  let sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  return sheet;
+}
+
+/**
+ * 設定定期資料處理觸發器
+ */
+function setupDataProcessingTrigger() {
+  // 每週一上午 8 點執行
+  ScriptApp.newTrigger('processSpreadsheetData')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.MONDAY)
+    .atHour(8)
+    .create();
+}

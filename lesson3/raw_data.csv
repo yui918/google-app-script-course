@@ -1,0 +1,10 @@
+﻿姓名,電子郵件,業績金額,部門,備註
+王大明,wang@example.com,15000,業務一部,正常資料
+陳小華,chen.h@test.com,23500,業務二部,本月最佳
+李美玲,invalid-email-format,8000,業務一部,故意放錯的Email(會被過濾)
+張建國,chang@company.com,32000,業務三部,正常資料
+,,,,
+林采潔,lin.c@example.com,無數字,業務二部,業績非數字(計算時會忽略)
+黃志偉,huang@example.com,41000,業務一部,正常資料
+周杰倫,jay@music.com,28000,業務三部,正常資料
+吳宗憲,,15000,業務二部,沒有Email(不會被過濾因為為空)

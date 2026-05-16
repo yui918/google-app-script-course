@@ -1,0 +1,85 @@
+function createOrEditBadmintonForm() {
+  // 定義表單標題和對應的試算表標題
+  const formTitle = "16/05/26 - 羽球殿堂！";
+  const sheetTitle = `${formTitle} 回應`;
+  // 嘗試查找是否已存在同名表單
+  const forms = DriveApp.getFilesByName(formTitle);
+  let form;
+  // 如果表單已存在，則打開它；否則創建新表單
+  if (forms.hasNext()) {
+    const file = forms.next();
+    form = FormApp.openById(file.getId());
+    Logger.log("已有表單，進行編輯：" + form.getEditUrl());
+  } else {
+    form = FormApp.create(formTitle);
+    Logger.log("新建表單完成：" + form.getEditUrl());
+  }
+  // 設置表單描述，包括活動詳情和講者介紹
+  form.setDescription(
+    "感謝你有興趣參加本次免費線上講座！\n" +
+    "📅 活動時間：2026 年 5 月 16 日（星期六）下午 2:00 – 4:00\n" +
+    "📍 活動地點：Jitsi Meet 線上會議\n" +
+    "💡 活動完全免費，歡迎自由參加！\n\n"
+  );
+  // 清除表單中的所有舊題目
+  const items = form.getItems();
+  for (let i = 0; i < items.length; i++) {
+    form.deleteItem(items[i]);
+  }
+  // 1. 姓名（必填文本題）
+  form
+    .addTextItem()
+    .setTitle("1. 姓名")
+    .setRequired(true);
+  // 2. Email（必填，帶驗證的文本題）
+  form
+    .addTextItem()
+    .setTitle("2. Email")
+    .setValidation(FormApp.createTextValidation().requireTextIsEmail().build())
+    .setRequired(true);
+  // 3. 羽球經驗（必填單選題）
+  form
+    .addMultipleChoiceItem()
+    .setTitle("3. 羽球經驗")
+    .setChoiceValues([
+      "完全新手",
+      "有簡單經驗",
+      "熟練",
+      "職業選手"
+    ])
+    .setRequired(true);
+  // 4. 偏好講座語言（必填單選題）
+  form
+    .addMultipleChoiceItem()
+    .setTitle("4. 偏好講座語言")
+    .setChoiceValues([
+      "粵語",
+      "國語",
+      "都可以"
+    ])
+    .setRequired(true);
+  // 5. 訂閱意願（必填單選題）
+  form
+    .addMultipleChoiceItem()
+    .setTitle("5. 訂閱意願")
+    .setChoiceValues([
+      "願意",
+      "暫時不需要，謝謝"
+    ])
+    .setRequired(true);
+  // 檢查是否已有同名試算表，如果沒有則創建新的
+  const spreadsheets = DriveApp.getFilesByName(sheetTitle);
+  let sheet;
+  if (spreadsheets.hasNext()) {
+    const file = spreadsheets.next();
+    sheet = SpreadsheetApp.openById(file.getId());
+    Logger.log("已有試算表，使用現有的：" + sheet.getUrl());
+  } else {
+    sheet = SpreadsheetApp.create(sheetTitle);
+    Logger.log("新建試算表完成：" + sheet.getUrl());
+  }
+  // 設定表單回應的目的地為該試算表
+  form.setDestination(FormApp.DestinationType.SPREADSHEET, sheet.getId());
+  
+  Logger.log("恭喜！表單與試算表已成功串接。");
+}
